@@ -28,6 +28,7 @@ formDOM.addEventListener("submit", async (e) => {
     passwordInputDOM.value = "";
 
     localStorage.setItem("token", data.token);
+    localStorage.setItem("refreshToken", data.refreshToken);
     resultDOM.innerHTML = "";
     tokenDOM.textContent = "token present";
     tokenDOM.classList.add("text-success");
