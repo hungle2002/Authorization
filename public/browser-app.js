@@ -4,6 +4,7 @@ const passwordInputDOM = document.querySelector(".password-input");
 const formAlertDOM = document.querySelector(".form-alert");
 const resultDOM = document.querySelector(".result");
 const btnDOM = document.querySelector("#data");
+const btnLogout = document.querySelector("#logout");
 const tokenDOM = document.querySelector(".token");
 
 formDOM.addEventListener("submit", async (e) => {
@@ -28,6 +29,7 @@ formDOM.addEventListener("submit", async (e) => {
     passwordInputDOM.value = "";
 
     localStorage.setItem("token", data.token);
+    localStorage.setItem("refreshToken", data.refreshToken);
     resultDOM.innerHTML = "";
     tokenDOM.textContent = "token present";
     tokenDOM.classList.add("text-success");
@@ -35,6 +37,7 @@ formDOM.addEventListener("submit", async (e) => {
     formAlertDOM.style.display = "block";
     formAlertDOM.textContent = error.response.data.msg;
     localStorage.removeItem("token");
+    localStorage.removeItem("refreshToken");
     resultDOM.innerHTML = "";
     tokenDOM.textContent = "no token present";
     tokenDOM.classList.remove("text-success");
@@ -47,14 +50,21 @@ formDOM.addEventListener("submit", async (e) => {
 btnDOM.addEventListener("click", async () => {
   const token = localStorage.getItem("token");
   try {
-    const { data } = await axios.get("/api/v1/jobs/1", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const { data } = await axios.get("/api/v1/jobs/1");
     resultDOM.innerHTML = `<h5>Hello ${data.name}</h5><p>Your role is: ${data.role} </p>`;
   } catch (error) {
     localStorage.removeItem("token");
+    resultDOM.innerHTML = `<p>${error.response.data.msg}</p>`;
+  }
+});
+
+btnLogout.addEventListener("click", async () => {
+  localStorage.removeItem("token");
+  localStorage.removeItem("refreshToken");
+  try {
+    const { data } = await axios.post("/api/v1/auth/logout");
+    resultDOM.innerHTML = data.msg;
+  } catch (error) {
     resultDOM.innerHTML = `<p>${error.response.data.msg}</p>`;
   }
 });

@@ -53,7 +53,7 @@ UserSchema.methods.createRefreshJWT = function () {
   return jwt.sign(
     { userId: this._id, name: this.name, role: this.role },
     process.env.JWT_SECRET,
-    { expiresIn: "1y" }
+    { expiresIn: 1000 * 24 * 60 * 60 * 30 }
   );
 };
 

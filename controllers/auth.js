@@ -1,6 +1,11 @@
 const { StatusCodes } = require("http-status-codes");
 const User = require("../models/User");
 const { BadRequestError, UnauthenticatedError } = require("../errors");
+const {
+  createJWT,
+  attachCookiesToResponse,
+  createRefreshJWT,
+} = require("../services/jwt");
 
 const register = async (req, res) => {
   const user = await User.create({ ...req.body });
@@ -26,10 +31,35 @@ const login = async (req, res) => {
   if (!isPasswordCorrect) {
     throw new UnauthenticatedError("Invalid credentials");
   }
-  const token = await user.createJWT();
-  res
-    .status(StatusCodes.OK)
-    .json({ msg: "Login sucess", token });
+
+  // create new token
+  const token = createJWT({
+    userId: user.userId,
+    name: user.name,
+    role: user.role,
+  });
+  // create new refrestoken
+  const refreshToken = createRefreshJWT({
+    userId: user.userId,
+    name: user.name,
+    role: user.role,
+  });
+
+  attachCookiesToResponse({ res, token, refreshToken });
+
+  res.status(StatusCodes.OK).json({ msg: "Login sucess", token, refreshToken });
 };
 
-module.exports = { register, login };
+const logout = (req, res) => {
+  res.cookie("token", "token", {
+    httpOnly: true,
+    expires: new Date(Date.now()),
+  });
+  res.cookie("refreshToken", "refreshToken", {
+    httpOnly: true,
+    expires: new Date(Date.now()),
+  });
+  res.status(StatusCodes.OK).json({ msg: "Logout sucess" });
+};
+
+module.exports = { register, login, logout };
