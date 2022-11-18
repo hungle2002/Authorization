@@ -28,7 +28,26 @@ const login = async (req, res) => {
   }
   const token = await user.createJWT();
   const refreshToken = await user.createRefreshJWT();
+
+  const oneDay = 1000 * 60 * 60 * 24;
+  res.cookie("token", token, {
+    httpOnly: true,
+    expires: new Date(Date.now() + 1000 * 60 * 60),
+  });
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    expires: new Date(Date.now() + oneDay),
+  });
+
   res.status(StatusCodes.OK).json({ msg: "Login sucess", token, refreshToken });
 };
 
-module.exports = { register, login };
+const logout = (req, res) => {
+  res.cookie("token", "token", {
+    httpOnly: true,
+    expires: new Date(Date.now() + 5000),
+  });
+  res.status(StatusCodes.OK).json({ msg: "Logout sucess" });
+};
+
+module.exports = { register, login, logout };
