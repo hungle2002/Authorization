@@ -1,6 +1,11 @@
 const { StatusCodes } = require("http-status-codes");
 const User = require("../models/User");
 const { BadRequestError, UnauthenticatedError } = require("../errors");
+const {
+  createJWT,
+  attachCookiesToResponse,
+  createRefreshJWT,
+} = require("../services/jwt");
 
 const register = async (req, res) => {
   const user = await User.create({ ...req.body });
@@ -26,18 +31,21 @@ const login = async (req, res) => {
   if (!isPasswordCorrect) {
     throw new UnauthenticatedError("Invalid credentials");
   }
-  const token = await user.createJWT();
-  const refreshToken = await user.createRefreshJWT();
 
-  const oneDay = 1000 * 60 * 60 * 24;
-  res.cookie("token", token, {
-    httpOnly: true,
-    expires: new Date(Date.now() + 1000 * 60 * 60),
+  // create new token
+  const token = createJWT({
+    userId: user.userId,
+    name: user.name,
+    role: user.role,
   });
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    expires: new Date(Date.now() + oneDay),
+  // create new refrestoken
+  const refreshToken = createRefreshJWT({
+    userId: user.userId,
+    name: user.name,
+    role: user.role,
   });
+
+  attachCookiesToResponse({ res, token, refreshToken });
 
   res.status(StatusCodes.OK).json({ msg: "Login sucess", token, refreshToken });
 };
@@ -45,7 +53,11 @@ const login = async (req, res) => {
 const logout = (req, res) => {
   res.cookie("token", "token", {
     httpOnly: true,
-    expires: new Date(Date.now() + 5000),
+    expires: new Date(Date.now()),
+  });
+  res.cookie("refreshToken", "refreshToken", {
+    httpOnly: true,
+    expires: new Date(Date.now()),
   });
   res.status(StatusCodes.OK).json({ msg: "Logout sucess" });
 };

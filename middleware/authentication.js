@@ -1,11 +1,17 @@
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
+const {
+  createJWT,
+  isTokenValid,
+  attachCookiesToResponse,
+  createRefreshJWT,
+} = require("../services/jwt");
 const { UnauthenticatedError } = require("../errors");
 
 function isAuthenticated(token, refreshToken) {
   try {
-    jwt.verify(token, process.env.JWT_SECRET);
-    const { exp } = jwt.verify(refreshToken, process.env.JWT_SECRET);
+    isTokenValid(token);
+    const { exp } = isTokenValid(refreshToken);
     if (Date.now() >= exp * 1000) {
       return false;
     }
@@ -16,33 +22,27 @@ function isAuthenticated(token, refreshToken) {
 }
 
 const authUser = async (req, res, next) => {
-  const token = req.cookies.token;
-  const refreshToken = req.cookies.refreshToken;
-  if (!token) throw new UnauthenticatedError("Authentication invalid 3");
+  let token = req.cookies.token;
+  let refreshToken = req.cookies.refreshToken;
+
+  if (!token) throw new UnauthenticatedError("No token");
   try {
-    const payLoad = await jwt.verify(refreshToken, process.env.JWT_SECRET);
-    console.log(isAuthenticated(token, refreshToken));
+    const payLoad = await isTokenValid(refreshToken);
     if (!isAuthenticated(token, refreshToken)) {
       // create new token
-      console.log(refreshToken);
-      newToken = jwt.sign(
-        { userId: payLoad.userId, name: payLoad.name, role: payLoad.role },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_LIFETIME }
-      );
-      newRefreshToken = jwt.sign(
-        { userId: payLoad.userId, name: payLoad.name, role: payLoad.role },
-        process.env.JWT_SECRET,
-        { expiresIn: "1y" }
-      );
-      res.cookie("token", newToken, {
-        httpOnly: true,
-        expires: new Date(Date.now() + 1000 * 60 * 60),
+      token = createJWT({
+        userId: payLoad.userId,
+        name: payLoad.name,
+        role: payLoad.role,
       });
-      res.cookie("refreshToken", newRefreshToken, {
-        httpOnly: true,
-        expires: new Date(Date.now() + 1000 * 60 * 60 * 24),
+      // create new refrestoken
+      refreshToken = createRefreshJWT({
+        userId: payLoad.userId,
+        name: payLoad.name,
+        role: payLoad.role,
       });
+
+      attachCookiesToResponse({ res, token, refreshToken });
     }
 
     // attach the user to the job route
